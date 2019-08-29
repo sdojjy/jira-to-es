@@ -12,6 +12,8 @@ import (
 	"strings"
 )
 
+var JiraQuerySize = 50
+
 const indexName = "tidb-bug"
 const issueLinkFormat = "https://internal.pingcap.net/jira/browse/%s"
 
@@ -53,17 +55,18 @@ func tryToSyncFirstTime(jiraClient *jira.Client, esClient *elasticsearch.Client)
 		log.Println("check index failed", err)
 		return err
 	}
-	defer res.Body.Close()
+	res.Body.Close()
 	if res.StatusCode == 404 {
 		log.Println("index not found,create new one")
-		res, err = esClient.Indices.Create("tidb-bug", esClient.Indices.Create.WithHuman())
+		createRes, err := esClient.Indices.Create("tidb-bug", esClient.Indices.Create.WithHuman())
 		if err != nil {
 			return err
 		}
+		createRes.Body.Close()
 
 		//sync jira issue to es
 		log.Println("start to sync jira issue")
-		err := sync(jiraClient, esClient)
+		err = sync(jiraClient, esClient)
 		log.Println("sync jira issue done", err)
 		return err
 	}
@@ -71,10 +74,15 @@ func tryToSyncFirstTime(jiraClient *jira.Client, esClient *elasticsearch.Client)
 }
 
 func sync(jiraClient *jira.Client, esClient *elasticsearch.Client) error {
-	return jiraClient.Issue.SearchPages("project = TIDB", &jira.SearchOptions{Fields: []string{ /*"comment", "description", "summary", "label", "sprint"*/ "*all"}}, func(issue jira.Issue) error {
-		saveJiraIssueToES(esClient, issue)
-		return nil
-	})
+	return jiraClient.Issue.SearchPages("project = TIDB",
+		&jira.SearchOptions{
+			Fields:     []string{ /*"comment", "description", "summary", "label", "sprint"*/ "*all"},
+			MaxResults: JiraQuerySize,
+		},
+		func(issue jira.Issue) error {
+			saveJiraIssueToES(esClient, issue)
+			return nil
+		})
 }
 
 func deleteIndexIfExists(esClient *elasticsearch.Client, indexName string) error {
@@ -106,6 +114,7 @@ func saveJiraIssueToES(esClient *elasticsearch.Client, issue jira.Issue) {
 		return
 	}
 	insertRs, err := esClient.Index(indexName, strings.NewReader(string(data)))
+	defer insertRs.Body.Close()
 	if err != nil {
 		log.Println(err)
 		return
