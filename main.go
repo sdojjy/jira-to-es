@@ -24,6 +24,7 @@ func init() {
 	flag.StringVar(&esURL, "es-url", "http://127.0.0.1:9200", "elastic search url")
 	flag.StringVar(&address, "listen-address", ":8888", "web server listen address")
 	flag.IntVar(&store.JiraQuerySize, "jira-query-size", 50, "jira search result size per query")
+	flag.StringVar(&store.JiraJQL, "jira-jql", "project in (TIDB, TIBUG)", "the jira jql to search all issues that should be save to es")
 }
 
 func main() {

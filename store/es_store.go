@@ -13,6 +13,7 @@ import (
 )
 
 var JiraQuerySize = 50
+var JiraJQL = "project in (TIDB, TIBUG)"
 
 const indexName = "tidb-bug"
 const issueLinkFormat = "https://internal.pingcap.net/jira/browse/%s"
@@ -74,7 +75,7 @@ func tryToSyncFirstTime(jiraClient *jira.Client, esClient *elasticsearch.Client)
 }
 
 func sync(jiraClient *jira.Client, esClient *elasticsearch.Client) error {
-	return jiraClient.Issue.SearchPages("project = TIDB",
+	return jiraClient.Issue.SearchPages(JiraJQL,
 		&jira.SearchOptions{
 			Fields:     []string{ /*"comment", "description", "summary", "label", "sprint"*/ "*all"},
 			MaxResults: JiraQuerySize,
