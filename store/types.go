@@ -1,11 +1,6 @@
 package store
 
-type JiraIssue struct {
-	Link        string   `json:"link"`
-	Title       string   `json:"title"`
-	Description string   `json:"description"`
-	Comments    []string `json:"comments"`
-}
+import "github.com/andygrunwald/go-jira"
 
 type esResponse struct {
 	Hits hits `json:"hits"`
@@ -17,15 +12,8 @@ type hits struct {
 }
 
 type hitItem struct {
-	Source    JiraIssue     `json:"_source"`
-	Highlight highlightItem `json:"highlight"`
-}
-
-type highlightItem struct {
-	Link        []string `json:"link"`
-	Title       []string `json:"title"`
-	Description []string `json:"description"`
-	Comments    []string `json:"comments"`
+	Source    *jira.Issue         `json:"_source"`
+	Highlight map[string][]string `json:"highlight"`
 }
 
 type ErrResponse struct {
@@ -41,4 +29,18 @@ type SearchItem struct {
 	Link      string   `json:"link"`
 	Title     string   `json:"title"`
 	Highlight []string `json:"highlight"`
+}
+
+type JiraIssue struct {
+	Link        string   `json:"link"`
+	Title       string   `json:"title"`
+	Description string   `json:"description"`
+	Comments    []string `json:"comments"`
+}
+
+type highlightItem struct {
+	Link        []string `json:"link"`
+	Title       []string `json:"title"`
+	Description []string `json:"description"`
+	Comments    []string `json:"comments"`
 }

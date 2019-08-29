@@ -25,10 +25,7 @@ const queryFormat = `
   
    "highlight": {
     "fields": {
-      "link": {},
-      "comment": {},
-      "description": {},
-      "title":{}
+      "*": {}
     }
   }
 }
@@ -43,8 +40,9 @@ type multiMatch struct {
 func newQuery(query string) *multiMatch {
 	return &multiMatch{
 		Query:  query,
-		Fields: []string{"link^1.0", "comment^1.0", "description^1.0", "title^1.0"},
-		Type:   "most_fields",
+		Fields: []string{},
+		//Fields: []string{"link^1.0", "comment^1.0", "description^1.0", "title^1.0"},
+		Type: "most_fields",
 	}
 }
 
@@ -82,19 +80,12 @@ func esResponse2SearchResponse(esRes *esResponse) *SearchResponse {
 	searchRes.Total = esRes.Hits.Total
 	for _, item := range esRes.Hits.Hits {
 		searchItem := &SearchItem{}
-		searchItem.Link = item.Source.Link
-		searchItem.Title = item.Source.Title
-		for _, highlight := range item.Highlight.Title {
-			searchItem.Highlight = append(searchItem.Highlight, highlight)
-		}
-		for _, highlight := range item.Highlight.Link {
-			searchItem.Highlight = append(searchItem.Highlight, highlight)
-		}
-		for _, highlight := range item.Highlight.Description {
-			searchItem.Highlight = append(searchItem.Highlight, highlight)
-		}
-		for _, highlight := range item.Highlight.Comments {
-			searchItem.Highlight = append(searchItem.Highlight, highlight)
+		searchItem.Link = fmt.Sprintf(issueLinkFormat, item.Source.Key)
+		searchItem.Title = item.Source.Fields.Summary
+		for _, highlightField := range item.Highlight {
+			for _, highlight := range highlightField {
+				searchItem.Highlight = append(searchItem.Highlight, highlight)
+			}
 		}
 		searchRes.Items = append(searchRes.Items, searchItem)
 	}

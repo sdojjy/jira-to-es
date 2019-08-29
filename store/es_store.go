@@ -62,7 +62,10 @@ func tryToSyncFirstTime(jiraClient *jira.Client, esClient *elasticsearch.Client)
 		}
 
 		//sync jira issue to es
-		return sync(jiraClient, esClient)
+		log.Println("start to sync jira issue")
+		err := sync(jiraClient, esClient)
+		log.Println("sync jira issue done", err)
+		return err
 	}
 	return nil
 }
@@ -97,26 +100,15 @@ func deleteIndexIfExists(esClient *elasticsearch.Client, indexName string) error
 }
 
 func saveJiraIssueToES(esClient *elasticsearch.Client, issue jira.Issue) {
-	esIssue := &JiraIssue{
-		Link:        fmt.Sprintf(issueLinkFormat, issue.Key),
-		Title:       issue.Fields.Summary,
-		Description: issue.Fields.Description,
-	}
-	var comments []string
-	if issue.Fields.Comments != nil && len(issue.Fields.Comments.Comments) > 0 {
-		for _, comment := range issue.Fields.Comments.Comments {
-			comments = append(comments, comment.Body)
-		}
-	}
-	esIssue.Comments = comments
-
-	data, err := json.Marshal(esIssue)
+	data, err := issueToString(issue)
 	if err != nil {
 		log.Println("marshal issue failed", err)
+		return
 	}
 	insertRs, err := esClient.Index(indexName, strings.NewReader(string(data)))
 	if err != nil {
 		log.Println(err)
+		return
 	}
 	if insertRs.StatusCode >= 300 {
 		data, _ := ioutil.ReadAll(insertRs.Body)
@@ -125,4 +117,20 @@ func saveJiraIssueToES(esClient *elasticsearch.Client, issue jira.Issue) {
 	} else {
 		log.Println(fmt.Sprintf("save to es done, key=%s", issue.Key))
 	}
+}
+
+func issueToString(issue jira.Issue) ([]byte, error) {
+	//esIssue := &JiraIssue{
+	//	Link:        fmt.Sprintf(issueLinkFormat, issue.Key),
+	//	Title:       issue.Fields.Summary,
+	//	Description: issue.Fields.Description,
+	//}
+	//var comments []string
+	//if issue.Fields.Comments != nil && len(issue.Fields.Comments.Comments) > 0 {
+	//	for _, comment := range issue.Fields.Comments.Comments {
+	//		comments = append(comments, comment.Body)
+	//	}
+	//}
+	//esIssue.Comments = comments
+	return json.Marshal(issue)
 }
