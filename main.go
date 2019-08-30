@@ -3,9 +3,11 @@ package main
 import (
 	"flag"
 	"log"
+	"time"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/elastic/go-elasticsearch/v6"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/sdojjy/tidb-bug-search-engine/api"
 	"github.com/sdojjy/tidb-bug-search-engine/store"
@@ -49,6 +51,17 @@ func main() {
 	//create api router
 	server := api.New(jiraClient, esClient)
 	engine := gin.Default()
+	engine.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET", "PATCH"},
+		AllowHeaders:     []string{"Origin"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		AllowOriginFunc: func(origin string) bool {
+			return true
+		},
+		MaxAge: 12 * time.Hour,
+	}))
 	search := engine.Group("/search")
 	search.GET("/issues", server.SearchIssue)
 	search.POST("/re-sync", server.ReSync)
