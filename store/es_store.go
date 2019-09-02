@@ -12,8 +12,8 @@ import (
 	"strings"
 )
 
-var JiraQuerySize = 50
-var JiraJQL = "project in (TIDB, TIBUG)"
+var JiraQuerySize = 500
+var JiraJQL = "project in (TIDB, ONCALL, TOOL, TIKV)"
 
 const indexName = "tidb-bug"
 const issueLinkFormat = "https://internal.pingcap.net/jira/browse/%s"
