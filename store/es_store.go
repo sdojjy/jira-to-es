@@ -23,7 +23,8 @@ const indexSetting = `
 {
 "settings": {
     "analysis": {
-      "analyzer": {"default":{"type":"ik_max_word"}}
+      "analyzer": {"default":{"type":"ik_max_word"}},
+      "search_analyzer": {"default": {"type": "ik_smart"}}
     }
   }
 }
