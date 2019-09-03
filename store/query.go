@@ -52,7 +52,7 @@ func SearchIssue(query string, from, size int, esClient *elasticsearch.Client) (
 		return nil, err
 	}
 	res, err := esClient.Search(
-		esClient.Search.WithIndex(indexName),
+		esClient.Search.WithIndex(IndexName),
 		esClient.Search.WithBody(strings.NewReader(fmt.Sprintf(queryFormat, string(buf)))),
 		esClient.Search.WithFrom(from),
 		esClient.Search.WithSize(size),

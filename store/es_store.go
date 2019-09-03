@@ -15,8 +15,19 @@ import (
 var JiraQuerySize = 500
 var JiraJQL = "project in (TIDB, ONCALL, TOOL, TIKV)"
 
-const indexName = "tidb-bug"
+var IndexName = "tidb-bug"
+
 const issueLinkFormat = "https://internal.pingcap.net/jira/browse/%s"
+
+const indexSetting = `
+{
+"settings": {
+    "analysis": {
+      "analyzer": {"default":{"type":"ik_max_word"}}
+    }
+  }
+}
+`
 
 func ScheduleSyncTask(jiraClient *jira.Client, esClient *elasticsearch.Client) {
 	err := tryToSyncFirstTime(jiraClient, esClient)
@@ -36,7 +47,7 @@ func ScheduleSyncTask(jiraClient *jira.Client, esClient *elasticsearch.Client) {
 
 func ReSyncAll(jiraClient *jira.Client, esClient *elasticsearch.Client) {
 	for {
-		err := deleteIndexIfExists(esClient, indexName)
+		err := deleteIndexIfExists(esClient, IndexName)
 		if err != nil {
 			log.Println("delete index failed", err)
 			continue
@@ -51,7 +62,7 @@ func ReSyncAll(jiraClient *jira.Client, esClient *elasticsearch.Client) {
 }
 
 func tryToSyncFirstTime(jiraClient *jira.Client, esClient *elasticsearch.Client) error {
-	res, err := esClient.Indices.Exists([]string{indexName})
+	res, err := esClient.Indices.Exists([]string{IndexName})
 	if err != nil {
 		log.Println("check index failed", err)
 		return err
@@ -59,11 +70,19 @@ func tryToSyncFirstTime(jiraClient *jira.Client, esClient *elasticsearch.Client)
 	res.Body.Close()
 	if res.StatusCode == 404 {
 		log.Println("index not found,create new one")
-		createRes, err := esClient.Indices.Create("tidb-bug", esClient.Indices.Create.WithHuman())
+		createRes, err := esClient.Indices.Create(IndexName,
+			esClient.Indices.Create.WithHuman(),
+			esClient.Indices.Create.WithBody(strings.NewReader(indexSetting)),
+		)
 		if err != nil {
 			return err
 		}
-		createRes.Body.Close()
+		defer createRes.Body.Close()
+		if createRes.StatusCode >= 300 {
+			data, _ := ioutil.ReadAll(createRes.Body)
+			dataStr := string(data)
+			return errors.New(fmt.Sprintf("insert issue failed, code=%d, data=%s", res.StatusCode, dataStr))
+		}
 
 		//sync jira issue to es
 		log.Println("start to sync jira issue")
@@ -114,7 +133,7 @@ func saveJiraIssueToES(esClient *elasticsearch.Client, issue jira.Issue) {
 		log.Println("marshal issue failed", err)
 		return
 	}
-	insertRs, err := esClient.Index(indexName, strings.NewReader(string(data)))
+	insertRs, err := esClient.Index(IndexName, strings.NewReader(string(data)))
 	defer insertRs.Body.Close()
 	if err != nil {
 		log.Println(err)
