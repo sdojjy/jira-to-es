@@ -38,6 +38,7 @@ type multiMatch struct {
 }
 
 func newQuery(query string) *multiMatch {
+	query = strings.TrimSpace(query)
 	matchType := "most_fields"
 	if strings.HasSuffix(query, "\"") && strings.HasPrefix(query, "\"") {
 		matchType = "phrase"
