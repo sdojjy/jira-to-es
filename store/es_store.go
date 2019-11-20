@@ -68,7 +68,7 @@ func tryToSyncFirstTime(jiraClient *jira.Client, esClient *elasticsearch.Client)
 		log.Println("check index failed", err)
 		return err
 	}
-	res.Body.Close()
+	defer deferClose(res.Body)
 	if res.StatusCode == 404 {
 		log.Println("index not found,create new one")
 		createRes, err := esClient.Indices.Create(IndexName,
@@ -78,7 +78,7 @@ func tryToSyncFirstTime(jiraClient *jira.Client, esClient *elasticsearch.Client)
 		if err != nil {
 			return err
 		}
-		defer createRes.Body.Close()
+		defer deferClose(createRes.Body)
 		if createRes.StatusCode >= 300 {
 			data, _ := ioutil.ReadAll(createRes.Body)
 			dataStr := string(data)
@@ -112,17 +112,18 @@ func deleteIndexIfExists(esClient *elasticsearch.Client, indexName string) error
 		log.Println("check index failed", err)
 		return err
 	}
-	defer res.Body.Close()
+	defer deferClose(res.Body)
 	if res.StatusCode == 200 {
 		log.Println("found index")
-		res, err := esClient.Indices.Delete([]string{indexName})
+		deleteRs, err := esClient.Indices.Delete([]string{indexName})
 		if err != nil {
 			log.Println("delete index failed", err)
 		}
-		if res.StatusCode != 200 {
-			data, _ := ioutil.ReadAll(res.Body)
+		defer deferClose(deleteRs.Body)
+		if deleteRs.StatusCode != 200 {
+			data, _ := ioutil.ReadAll(deleteRs.Body)
 			dataStr := string(data)
-			return errors.New(fmt.Sprintf("insert issue failed, code=%d, data=%s", res.StatusCode, dataStr))
+			return errors.New(fmt.Sprintf("insert issue failed, code=%d, data=%s", deleteRs.StatusCode, dataStr))
 		}
 	}
 	return nil
@@ -135,11 +136,11 @@ func saveJiraIssueToES(esClient *elasticsearch.Client, issue jira.Issue) {
 		return
 	}
 	insertRs, err := esClient.Index(IndexName, strings.NewReader(string(data)))
-	defer insertRs.Body.Close()
 	if err != nil {
 		log.Println(err)
 		return
 	}
+	defer deferClose(insertRs.Body)
 	if insertRs.StatusCode >= 300 {
 		data, _ := ioutil.ReadAll(insertRs.Body)
 		dataStr := string(data)

@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v6"
 	"github.com/pkg/errors"
+	"io"
 	"io/ioutil"
+	"log"
 	"strings"
 )
 
@@ -65,7 +67,7 @@ func SearchIssue(query string, from, size int, esClient *elasticsearch.Client) (
 	if err != nil {
 		return nil, err
 	}
-	defer res.Body.Close()
+	defer deferClose(res.Body)
 	data, _ := ioutil.ReadAll(res.Body)
 	if res.StatusCode != 200 {
 		dataStr := string(data)
@@ -95,4 +97,10 @@ func esResponse2SearchResponse(esRes *esResponse) *SearchResponse {
 		searchRes.Items = append(searchRes.Items, searchItem)
 	}
 	return searchRes
+}
+
+func deferClose(c io.Closer) {
+	if err := c.Close(); err != nil {
+		log.Print("close failed", err)
+	}
 }
