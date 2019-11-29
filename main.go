@@ -20,6 +20,7 @@ import (
 var (
 	jiraUsername string
 	jiraPassword string
+	jiraBaseURL  string
 	esURL        string
 	address      string
 	uiPath       string
@@ -27,7 +28,8 @@ var (
 
 func init() {
 	flag.StringVar(&jiraUsername, "jira-username", "", "jira username")
-	flag.StringVar(&jiraPassword, "jira-password", "", "jira password")
+	flag.StringVar(&jiraPassword, "jira-password", "https://internal.pingcap.net/jira", "jira password")
+	flag.StringVar(&jiraPassword, "jira-url", "", "jira server base url")
 	flag.StringVar(&esURL, "es-url", "http://127.0.0.1:9200", "elastic search url")
 	flag.StringVar(&store.IndexName, "es-index", "tidb-bug", "elastic index name")
 	flag.StringVar(&address, "listen-address", ":80", "web server listen address")
@@ -35,12 +37,13 @@ func init() {
 	flag.StringVar(&store.JiraJQL, "jira-jql", "project in (TIDB, ONCALL, TOOL, TIKV)", "the jira jql to search all issues that should be save to es")
 	flag.StringVar(&filters.GoogleOauthConfig.ClientID, "google-oauth-client-id", "", "google oauth client id")
 	flag.StringVar(&filters.GoogleOauthConfig.ClientSecret, "google-oauth-client-secret", "", "google oauth secret")
-	flag.StringVar(&filters.GoogleOauthConfig.RedirectURL, "google-oauth-callback-url", "http://jirasearch.pingcap.net/auth/callback", "google oauth callback url")
+	flag.StringVar(&filters.GoogleOauthConfig.RedirectURL, "google-oauth-callback-url", "http://bug.pingcap.net/auth/callback", "google oauth callback url")
 	flag.StringVar(&uiPath, "ui-path", "", "ui path directory")
 }
 
 func main() {
 	flag.Parse()
+	checkArgs()
 	tp := jira.BasicAuthTransport{
 		Username: jiraUsername,
 		Password: jiraPassword,
@@ -59,7 +62,7 @@ func main() {
 	go store.ScheduleSyncTask(jiraClient, esClient)
 
 	manager := session.NewManager(session.Options{
-		MaxInactiveInterval: 1800, MaxAge: 84000, HttpOnly: false, Path: "/",
+		MaxInactiveInterval: 180000, MaxAge: 8400000, HttpOnly: true, Path: "/",
 	}, session.CreateMemSession,
 		//listen session event
 		func(s session.Session, event int) {
@@ -82,7 +85,7 @@ func main() {
 	engine := gin.Default()
 	engine.Use(filters.Auth(manager))
 	// Serve the contents over HTTP.
-	if uiPath != "" {
+	if uiPath == "" {
 		engine.Use(filters.Serve("/", statikFS))
 	} else {
 		engine.Use(static.ServeRoot("/", uiPath))
@@ -106,4 +109,13 @@ func main() {
 	auth.GET("/callback", filters.GoogleOAuthCallback(manager))
 
 	log.Fatal("gin run failed", engine.Run(address))
+}
+
+func checkArgs() {
+	if filters.GoogleOauthConfig.ClientID == "" || filters.GoogleOauthConfig.ClientSecret == "" || filters.GoogleOauthConfig.RedirectURL == "" {
+		log.Fatal("missing google oauth configuration")
+	}
+	if jiraUsername == "" || jiraPassword == "" || jiraBaseURL == "" {
+		log.Fatal("missing jira credentials")
+	}
 }
