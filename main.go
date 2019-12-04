@@ -28,16 +28,16 @@ var (
 
 func init() {
 	flag.StringVar(&jiraUsername, "jira-username", "", "jira username")
-	flag.StringVar(&jiraPassword, "jira-password", "https://internal.pingcap.net/jira", "jira password")
+	flag.StringVar(&jiraPassword, "jira-password", "", "jira password")
 	flag.StringVar(&jiraPassword, "jira-url", "", "jira server base url")
 	flag.StringVar(&esURL, "es-url", "http://127.0.0.1:9200", "elastic search url")
-	flag.StringVar(&store.IndexName, "es-index", "tidb-bug", "elastic index name")
+	flag.StringVar(&store.IndexName, "es-index", "jira", "elastic index name")
 	flag.StringVar(&address, "listen-address", ":80", "web server listen address")
 	flag.IntVar(&store.JiraQuerySize, "jira-query-size", 500, "jira search result size per query")
-	flag.StringVar(&store.JiraJQL, "jira-jql", "project in (TIDB, ONCALL, TOOL, TIKV)", "the jira jql to search all issues that should be save to es")
+	flag.StringVar(&store.JiraJQL, "jira-jql", "", "the jira jql to search all issues that should be save to es")
 	flag.StringVar(&filters.GoogleOauthConfig.ClientID, "google-oauth-client-id", "", "google oauth client id")
 	flag.StringVar(&filters.GoogleOauthConfig.ClientSecret, "google-oauth-client-secret", "", "google oauth secret")
-	flag.StringVar(&filters.GoogleOauthConfig.RedirectURL, "google-oauth-callback-url", "http://bug.pingcap.net/auth/callback", "google oauth callback url")
+	flag.StringVar(&filters.GoogleOauthConfig.RedirectURL, "google-oauth-callback-url", "", "google oauth callback url")
 	flag.StringVar(&uiPath, "ui-path", "", "ui path directory")
 }
 
@@ -48,7 +48,7 @@ func main() {
 		Username: jiraUsername,
 		Password: jiraPassword,
 	}
-	jiraClient, _ := jira.NewClient(tp.Client(), "https://internal.pingcap.net/jira")
+	jiraClient, _ := jira.NewClient(tp.Client(), jiraBaseURL)
 
 	cfg := elasticsearch.Config{
 		Addresses: []string{esURL},
@@ -117,5 +117,8 @@ func checkArgs() {
 	}
 	if jiraUsername == "" || jiraPassword == "" || jiraBaseURL == "" {
 		log.Fatal("missing jira credentials")
+	}
+	if store.JiraJQL == "" {
+		log.Fatal("missing jira jql")
 	}
 }
