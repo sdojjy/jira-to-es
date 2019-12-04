@@ -7,7 +7,7 @@ import (
 	"github.com/andygrunwald/go-jira"
 	"github.com/elastic/go-elasticsearch/v6"
 	"github.com/gin-gonic/gin"
-	"github.com/sdojjy/tidb-bug-search-engine/store"
+	"github.com/sdojjy/jira-to-es/store"
 )
 
 type Server struct {

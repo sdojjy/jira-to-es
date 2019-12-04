@@ -1,4 +1,4 @@
-module github.com/sdojjy/tidb-bug-search-engine
+module github.com/sdojjy/jira-to-es
 
 go 1.12
 
